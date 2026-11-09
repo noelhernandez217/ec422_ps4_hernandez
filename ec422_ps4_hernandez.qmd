@@ -56,7 +56,7 @@ In a few sentences: describe the trend and the seasonal pattern. Which months ar
 
 **Response:** 
 
-
+The general trend is upwards. The lowest months are Jan/Feb and highest months are Nov/Dec. The seasonal swings do grow wiht the level of the series which means that logs can help us unmask actual behavior. 
 
 
 ## 2.2. Fit Both Models 
@@ -64,7 +64,7 @@ In a few sentences: describe the trend and the seasonal pattern. Which months ar
 ### 2.2a. 
 
 ```{r}
-iquor_fit <- liquor |>
+liquor_fit <- liquor |>
   model(arima = ARIMA(log(sales)),
         ets   = ETS(log(sales)))
 
@@ -72,7 +72,9 @@ liquor_fit |> select(arima) |> report()
 liquor_fit |> select(ets) |> report()
 ```
 
+Which specification was chosen for each model? In words: what does the chosen ARIMA say about how the series was differenced? What do the three letters of the chosen ETS say about its error, trend, and seasonal components?
 
+**Response:** We have a seasonal ARIMA which was differenced once. For ETS, we have 
 
 
 

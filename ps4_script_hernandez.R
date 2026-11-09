@@ -34,3 +34,13 @@ liquor |> gg_season(log(sales)) +
 # Do the seasonal swings grow with the level of the series, and what does that 
 # suggest about using logs?
   
+#  2.2. Fit Both Models 
+
+# 2.2a. 
+
+liquor_fit <- liquor |>
+  model(arima = ARIMA(log(sales)),
+        ets   = ETS(log(sales)))
+
+liquor_fit |> select(arima) |> report()
+liquor_fit |> select(ets) |> report()
