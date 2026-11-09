@@ -4,23 +4,77 @@ format: html
 editor: visual
 ---
 
-## Quarto
+# Part 2 – A Business Forecasting Horse Race: ARIMA vs. ETS
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+Loading librarie needed for this assignment. 
 
 ```{r}
-1 + 1
+library(tidyverse)
+library(fpp3)
+library(BVAR)
 ```
 
-You can add options to executable code like this
+### 2.1. The Data
+
+Installing the data for the project and loading it form the data folder. 
 
 ```{r}
-#| echo: false
-2 * 2
+liquor_raw <- read_csv(
+  "data/MRTSSM4453USN.csv",
+  na = ".",
+  col_types = cols(
+    observation_date = col_date(format = "%Y-%m-%d"),
+    MRTSSM4453USN = col_double()
+  )
+)
+
+liquor <- liquor_raw |>
+  transmute(Month = yearmonth(observation_date), sales = MRTSSM4453USN) |>
+  as_tsibble(index = Month) |>
+  filter(Month <= yearmonth("2019 Dec"))
+
+has_gaps(liquor)
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+### 2.1b - Use autoplot
+
+Autoplot of sales. 
+
+```{r}
+liquor |> autoplot(sales) + 
+  labs(title = "Liquour Sales")
+```
+
+Seasonal plot of log(sales)
+
+```{r}
+liquor |> gg_season(log(sales)) + 
+  labs(title = "Seasonal log(sales) of Liquour")
+```
+
+In a few sentences: describe the trend and the seasonal pattern. Which months are high and which are low? Do the seasonal swings grow with the level of the series, and what does that suggest about using logs?
+
+**Response:** 
+
+
+
+
+## 2.2. Fit Both Models 
+
+### 2.2a. 
+
+```{r}
+iquor_fit <- liquor |>
+  model(arima = ARIMA(log(sales)),
+        ets   = ETS(log(sales)))
+
+liquor_fit |> select(arima) |> report()
+liquor_fit |> select(ets) |> report()
+```
+
+
+
+
+
+
+
