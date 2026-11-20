@@ -12,6 +12,7 @@ Loading librarie needed for this assignment.
 library(tidyverse)
 library(fpp3)
 library(BVAR)
+library(glue)
 ```
 
 ### 2.1. The Data
@@ -73,18 +74,17 @@ liquor_fit |> select(ets) |> report()
 
 Which specification was chosen for each model? In words: what does the chosen ARIMA say about how the series was differenced? What do the three letters of the chosen ETS say about its error, trend, and seasonal components?
 
-**Response:** For ARIMA, this is what we get: 
+**Response:** For ARIMA, this is what we get:
 
-Model: ARIMA(1,0,2)(2,1,1)[12] w/ drift 
+Model: ARIMA(1,0,2)(2,1,1)\[12\] w/ drift
 
-This is a seasonal ARIMA which differences one time. Our m = 12 so were working with yearly data. 
+This is a seasonal ARIMA which differences one time. Our m = 12 so were working with yearly data.
 
 Our ETS model is ETS(A,A,A). This means we have an additive trend, error, and seasonality. This is the Additive Holt-Winters model.
 
+### 2.2b
 
-### 2.2b 
-
-Check the residuals of the ARIMA model with gg_tsresiduals() and a Ljung–Box test at lag 24. Fill in dof with the number of estimated AR and MA coefficients (\(p + q + P + Q\)) in the model chosen in 2.2a
+Check the residuals of the ARIMA model with gg_tsresiduals() and a Ljung–Box test at lag 24. Fill in dof with the number of estimated AR and MA coefficients ((p + q + P + Q)) in the model chosen in 2.2a
 
 ```{r}
 liquor_fit |> select(arima) |> gg_tsresiduals()
@@ -98,10 +98,142 @@ liquor_fit |>
 
 Do the residuals look like white noise? Failing this test doesn’t tell us that a model will forecast badly, only that there may be structure left to capture. The horse race below will tell us how well the model actually forecasts.
 
-**Response:** I think the residuals for the most part look like random noise. However, with the acf and lag[1M] gragph, it looks like there is some trend moving upwards. So maybe there really could still be some signal to capture. 
+**Response:** I think the residuals for the most part look like random noise. However, with the acf and lag\[1M\] gragph, it looks like there is some trend moving upwards. So maybe there really could still be some signal to capture.
 
 ## 2.3 The Horse Race
 
+### 2.3a
+
+```{r}
+liquor_cv <- liquor |>
+  stretch_tsibble(.init = 120, .step = 1) |>
+  filter(.id < max(.id))
+
+liquor_cv_fit <- liquor_cv |>
+  model(snaive = SNAIVE(sales),
+        ets    = ETS(log(sales)),
+        arima  = ARIMA(log(sales)))
+
+saveRDS(liquor_cv_fit, "results/liquor_cv_fit.rds")
+```
+
+If you come back to this later in a new R session, you can restore the fitted models without re-running the TS-CV by replacing the liquor_cv_fit definition above with liquor_cv_fit \<- readRDS("results/liquor_cv_fit.rds").
+
+```{r}
+liquor_cv_fit <- readRDS("results/liquor_cv_fit.rds")
+# to save this since it takes so long to run
+```
+
+How many different forecast origins will be considered in this TS-CV?
+
+**Response:** Total of 216 origin points being considered for this TS-CV.
+
+```{r}
+nrow(liquor_cv_fit)
+```
+
+### 2.3b
+
+Produce the one-month-ahead forecasts and compute their accuracy.
+
+```{r}
+liquor_cv_fc <- liquor_cv_fit |>
+  forecast(h = 1)
+
+liquor_cv_fc |>
+  accuracy(liquor, measures = list(RMSE = RMSE, MAE = MAE))
+```
+
+What are the dates of the first and last forecasts? Report the accuracy results in a table.
+
+**Response:** So we want the last months of the first .id and last .id. The first forecast is 2002 January, the last forecast is 2019 December. The ARIMA models perform the best across both RMSE and MAE error metrics. It has 81.4 RMSE and a 65.65 MAE. ETS peforms a little worse with a 94.3 RMSE and a 72 MAE. Snaive does the worst with a very high RMSE of 161 and MAE of 136.
+
+```{r}
+nrow(liquor_cv_fc) 
+first_id = liquor_cv_fc |> filter(.id == 1)
+first_id_fc = first_id$Month[1] 
+
+# all have the same months so I just grabbed it
+
+last_id = liquor_cv_fc |> filter(.id == 216)
+last_id_fc = last_id$Month[1]
+glue("First forecast month: {first_id_fc}")
+glue("Last forecast month: {last_id_fc}")
+
+```
+
+## 2.4. Are the Differences Significant?
+
+Use a Diebold–Mariano test with squared error loss (power = 2) to test whether ARIMA and ETS are equally accurate:
+
+```{r}
+liquor_errs <- liquor_cv_fc |>
+  as_tibble() |>
+  left_join(as_tibble(liquor) |> select(Month, actual = sales),
+            by = "Month") |>
+  mutate(e = actual - .mean) |>
+  select(Month, .model, e) |>
+  pivot_wider(names_from = .model, values_from = e)
+
+# arima vs ets
+forecast::dm.test(liquor_errs$arima, liquor_errs$ets, h = 1, power = 2)
+```
+
+Next, modify the code above to run the same test comparing ARIMA to the seasonal random walk benchmark.
+
+Code doing ARIMA vs Snaive:
+
+```{r}
+# should just copy this line and swich out the models? 
+# arima vs snaive
+forecast::dm.test(liquor_errs$arima, liquor_errs$snaive, h = 1, power = 2)
+```
+
+In two or three sentences: what do you conclude? If you were the liquor store chain, which model would you use?
+
+**Respone:**
+
+For the ARIMA vs ETS model, we get a DM = -2.9062 and a p-value of 0.004042. For the ARIMA vs Snaive model, we get a DM = -10.755 and a p-value of p-value \< 2.2e-16. In both cases, (where DM is negative) the first ARIMA model had higher accuracy and we see a greater difference in ARIMA vs Snaive. We get a low pvalue for ARIMA vs ETS but an almost zero p-value between ARIMA vs Snaive which means that there is a statistically significant difference in accuracy between both models so I would use ARIMA.
+
+## Part 3 – Forecast Combination
+
+### 3a
+
+As we saw in class, a forecast combination in fable is just arithmetic on the fitted models. Create an equal-weight combination of ARIMA and ETS:
+
+```{r}
+liquor_combo_fc <- liquor_cv_fit |>
+  mutate(combo = (arima + ets) / 2) |>
+  forecast(h = 1)
+
+liquor_combo_fc |>
+  accuracy(liquor, measures = list(RMSE = RMSE, MAE = MAE))
+```
+
+Report the results in a table. How does combo compare to each of the models that go into it?
+
+**Respone:** The combo results are very close to ARIMA and outperform ETS and Snaive. ARIMA has an RMSE of 81.4 and an MAE of 65.65 and combo errors are very close with RMSE of 85.19 and MAE of 66.76.
+
+### 3b
+
+```{r}
+cor(liquor_errs$arima, liquor_errs$ets)
+```
+
+Based on this correlation, and on the DM test in 2.4, explain in two or three sentences why the combination did or did not beat the best individual model.
+
+**Response:** The combination did not beat the best ARIMA model. This is probably because the errors being made by both models are too similar. The correlation of 0.87 is very high so the errors did not cancel each other out. 
+
+# Part 4 – A Medium-Scale VAR vs. a BVAR
+
+### 4.1. The Data
+
+Reading in the downloaded FRED-QD data from canvas. 
+
+```{r}
+qd_raw <- read_csv("data/fredqd_2026-09.csv", show_col_types = FALSE) |>
+  slice(-(1:2))
+```
 
 
 
