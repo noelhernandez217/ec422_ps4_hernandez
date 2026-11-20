@@ -6,7 +6,7 @@ editor: visual
 
 # Part 2 – A Business Forecasting Horse Race: ARIMA vs. ETS
 
-Loading librarie needed for this assignment. 
+Loading librarie needed for this assignment.
 
 ```{r}
 library(tidyverse)
@@ -16,7 +16,7 @@ library(BVAR)
 
 ### 2.1. The Data
 
-Installing the data for the project and loading it form the data folder. 
+Installing the data for the project and loading it form the data folder.
 
 ```{r}
 liquor_raw <- read_csv(
@@ -38,7 +38,7 @@ has_gaps(liquor)
 
 ### 2.1b - Use autoplot
 
-Autoplot of sales. 
+Autoplot of sales.
 
 ```{r}
 liquor |> autoplot(sales) + 
@@ -54,14 +54,13 @@ liquor |> gg_season(log(sales)) +
 
 In a few sentences: describe the trend and the seasonal pattern. Which months are high and which are low? Do the seasonal swings grow with the level of the series, and what does that suggest about using logs?
 
-**Response:** 
+**Response:**
 
-The general trend is upwards. The lowest months are Jan/Feb and highest months are Nov/Dec. The seasonal swings do grow wiht the level of the series which means that logs can help us unmask actual behavior. 
+The general trend is upwards. The lowest months are Jan/Feb and highest months are Nov/Dec. The seasonal swings do grow wiht the level of the series which means that logs can help us unmask actual behavior.
 
+## 2.2. Fit Both Models
 
-## 2.2. Fit Both Models 
-
-### 2.2a. 
+### 2.2a.
 
 ```{r}
 liquor_fit <- liquor |>
@@ -74,7 +73,34 @@ liquor_fit |> select(ets) |> report()
 
 Which specification was chosen for each model? In words: what does the chosen ARIMA say about how the series was differenced? What do the three letters of the chosen ETS say about its error, trend, and seasonal components?
 
-**Response:** We have a seasonal ARIMA which was differenced once. For ETS, we have 
+**Response:** For ARIMA, this is what we get: 
+
+Model: ARIMA(1,0,2)(2,1,1)[12] w/ drift 
+
+This is a seasonal ARIMA which differences one time. Our m = 12 so were working with yearly data. 
+
+Our ETS model is ETS(A,A,A). This means we have an additive trend, error, and seasonality. This is the Additive Holt-Winters model.
+
+
+### 2.2b 
+
+Check the residuals of the ARIMA model with gg_tsresiduals() and a Ljung–Box test at lag 24. Fill in dof with the number of estimated AR and MA coefficients (\(p + q + P + Q\)) in the model chosen in 2.2a
+
+```{r}
+liquor_fit |> select(arima) |> gg_tsresiduals()
+# p = 1, P = 2, q = 2, Q = 1, TOTAL = 6
+liquor_fit |>
+  select(arima) |>
+  augment() |>
+  features(.innov, ljung_box, lag = 24, dof = 6)
+  # dof literally stands for "degrees of freedom", which for ARIMA, is        calculated with teh formula provided above: p + q + P + Q
+```
+
+Do the residuals look like white noise? Failing this test doesn’t tell us that a model will forecast badly, only that there may be structure left to capture. The horse race below will tell us how well the model actually forecasts.
+
+**Response:** I think the residuals for the most part look like random noise. However, with the acf and lag[1M] gragph, it looks like there is some trend moving upwards. So maybe there really could still be some signal to capture. 
+
+## 2.3 The Horse Race
 
 
 

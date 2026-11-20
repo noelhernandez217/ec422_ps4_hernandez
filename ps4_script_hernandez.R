@@ -44,3 +44,17 @@ liquor_fit <- liquor |>
 
 liquor_fit |> select(arima) |> report()
 liquor_fit |> select(ets) |> report()
+
+# 2.2b 
+
+liquor_fit |> select(arima) |> gg_tsresiduals()
+
+liquor_fit |>
+  select(arima) |>
+  augment() |>
+  features(.innov, ljung_box, lag = 24, dof = 6)
+
+# p = 1, P = 2, q = 2, Q = 1, TOTAL = 6
+
+
+# 2.3. The Horse Race
