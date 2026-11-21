@@ -78,9 +78,9 @@ Which specification was chosen for each model? In words: what does the chosen AR
 
 Model: ARIMA(1,0,2)(2,1,1)\[12\] w/ drift
 
-This is a seasonal ARIMA which differences one time. Our m = 12 so were working with yearly data.
+This is a seasonal ARIMA with one seasonal difference. Our m = 12 so were working with monthly data.
 
-Our ETS model is ETS(A,A,A). This means we have an additive trend, error, and seasonality. This is the Additive Holt-Winters model.
+Our ETS model is ETS(A,A,A). This means we have an additive trend, error, and seasonality. This is the Additive Holt-Winters model and additive on the log scale works as multiplicative on the original scale. 
 
 ### 2.2b
 
@@ -96,9 +96,9 @@ liquor_fit |>
   # dof literally stands for "degrees of freedom", which for ARIMA, is        calculated with teh formula provided above: p + q + P + Q
 ```
 
-Do the residuals look like white noise? Failing this test doesn’t tell us that a model will forecast badly, only that there may be structure left to capture. The horse race below will tell us how well the model actually forecasts.
+Do the residuals look like white noise? Failing this test doesn’t tell us that a model will forecast badly, only that there may be structure left to capture. The horse race below will tell us how well the model actually forecasts. 
 
-**Response:** I think the residuals for the most part look like random noise. However, with the acf and lag\[1M\] gragph, it looks like there is some trend moving upwards. So maybe there really could still be some signal to capture.
+**Response:** In the acf graph, I see some pass the blue boundaries set. There also seems to be some kind of pattern or trend there. I would say there is definitely some signal/structure left for our model to capture. We also get a p-value around 0 so we reject white noise.
 
 ## 2.3 The Horse Race
 
@@ -141,7 +141,7 @@ liquor_cv_fc <- liquor_cv_fit |>
   forecast(h = 1)
 
 liquor_cv_fc |>
-  accuracy(liquor, measures = list(RMSE = RMSE, MAE = MAE))
+  accuracy(liquor, measures = list(RMSE = RMSE, MAE = MAE)) |> knitr::kable(digits = 2) 
 ```
 
 What are the dates of the first and last forecasts? Report the accuracy results in a table.
@@ -207,7 +207,7 @@ liquor_combo_fc <- liquor_cv_fit |>
   forecast(h = 1)
 
 liquor_combo_fc |>
-  accuracy(liquor, measures = list(RMSE = RMSE, MAE = MAE))
+  accuracy(liquor, measures = list(RMSE = RMSE, MAE = MAE)) |> knitr::kable(digits = 2) 
 ```
 
 Report the results in a table. How does combo compare to each of the models that go into it?
@@ -222,7 +222,7 @@ cor(liquor_errs$arima, liquor_errs$ets)
 
 Based on this correlation, and on the DM test in 2.4, explain in two or three sentences why the combination did or did not beat the best individual model.
 
-**Response:** The combination did not beat the best ARIMA model. This is probably because the errors being made by both models are too similar. The correlation of 0.87 is very high so the errors did not cancel each other out. 
+**Response:** The combination did not beat the best ARIMA model. This is probably because the errors being made by both models are too similar. The correlation of 0.88 is very high so the errors did not cancel each other out. ARIMA is significantly more accurate than ETS.
 
 # Part 4 – A Medium-Scale VAR vs. a BVAR
 
@@ -274,9 +274,9 @@ glue("Actual: {length(actual)}")
 
 How many forecasts will we produce for each variable, and what are the dates of the first and last forecast?
 
-**Response:** So we have 120 origins, and at each origin, we are are forecasting for 8 variables. So that means 960 actual total forecasted values across the origins.
+**Response:** 120 forecasts for each of the 8 variables. So that means 960 (120 x 8 = 960) actual total forecasted values across the origins.
 
-The actual training data is from 1960-1989, so our first actual forecast is is the first quarter in 1990 (year right after training window) and our last forecast is the final quarter of the last year of all the data. 
+The actual training data is from 1960-1989, so our first actual forecast is is the first quarter in 1990 (year right after training window) and our last forecast is the final quarter of the last year of all the data. So the first date is 1990-03-01 and the last date is 2019-12-01
 
 ```{r}
 all_dates <- filter(qd, date > as.Date("1989-12-01"))
@@ -318,7 +318,7 @@ rmse_by_var(fc_var4)
 
 Which VAR forecasts better? For how many of the eight variables? Given that the VAR(4) contains the VAR(1) as a special case, why might the smaller model forecast better?
 
-**Response:** VAR(1) performed better with lower RMSE values across the majority of the variables. Most notably in gdp, cons, emp, unrate, and ffr. Smaller models forecast better because adding variables for estimating always introduces uncertaining and raises estimation error. 
+**Response:** VAR(1) performed better with lower RMSE values across 7 of the 8 variables. Smaller models forecast better because adding lags adds estimation error that outweighs gains from the longer lags. 
 
 # 4.3. A BVAR 
 
@@ -481,7 +481,7 @@ summary(pc)$importance[, 1:5]
 ```
 What share of the variation in all 121 series do the first three factors explain? This should match the result we saw in class.
 
-**Response:** We see the first three principal components (PC1, PC2, and PC3) explain 0.294530 % of the variation. 
+**Response:** We see the first three principal components (PC1, PC2, and PC3) explain 29.4530 % of the variation. 
 
 ### 5.2b 
 
@@ -517,7 +517,7 @@ For PC2, here are the series that correlate the most with it:
 CPI: commodities, PCE price index: nondurable goods, CPI: all items less shelter, CPI: all items, CPI: all items less medical care, CPI: transportation, PCE price index, CPI: all items less food
 
 
-This PC2 is capturing prices or inflation factors for goods commodities, nondurable goods, and transportation. Goods like foods, shelter, and medical care were taken out. 
+This PC2 is capturing prices or inflation factors for goods commodities, nondurable goods, and transportation. 
 
 # 5.3. Replicate the Horse Race from Class
  
@@ -541,7 +541,7 @@ c(RMSE_AR = sqrt(mean(e_ar^2)), RMSE_FA = sqrt(mean(e_fa^2)))
 
 In class we saw an RMSE of 0.617 for the AR(1) and 0.589 with the factors. Confirm that you get the same numbers. Why would it be cheating to estimate the factors once, using the full sample, and use those in the horse race?
 
-**Response:** If we take advantage of the full sample, we have information leakage. Information that wouldn't otherwise be available in real time when this was being forecasted would leak into the model. This is cheating because we would construct a more accurate model with future information. 
+**Response:** For RMSE_AR I get 0.6168431 and for RMSE_FA I get 0.5887272 which match what we got in class. If we take advantage of the full sample, we have information leakage. Information that wouldn't otherwise be available in real time when this was being forecasted would leak into the model. This is cheating because we would construct a more accurate model with future information. 
 
 # 5.4. A Direct Forecast of Inflation
 
@@ -578,7 +578,7 @@ Because 12-month-ahead forecasts overlap, their errors are autocorrelated. The h
 
 Do the factors improve the forecast of 12-month CPI inflation? By what percentage do they reduce the RMSE? Is the difference statistically significant?
 
-**Response:** The factors cut RMSE down by ~10.2% and with such a low p-value of 0.0004426979, the differences are definitely statistically significant at both a 5% significance level and a 1% significance level. So this factor model is definitely more accurate. 
+**Response:** The factors cut RMSE down by ~10.2% which drops from 2.107908 to 1.893703 and with such a low p-value of 0.0004426979, the differences are definitely statistically significant at both a 5% significance level and a 1% significance level. So this factor model is definitely more accurate. 
 
 
 
