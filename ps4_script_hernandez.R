@@ -204,5 +204,35 @@ set.seed(422)
 fc_bvar_03 <- bvar_cv(0.3)
 saveRDS(fc_bvar_03, "results/fc_bvar_03.rds")
 
+# 4.3b
+
+set.seed(422)
+fc_bvar_005 <- bvar_cv(0.05)
+
+var_results <- tibble(
+  Variable = colnames(y),
+  `VAR(1)` = rmse_by_var(fc_var1),
+  `VAR(4)` = rmse_by_var(fc_var4),
+  `BVAR(4), lambda = 0.3` = rmse_by_var(fc_bvar_03),
+  `BVAR(4), lambda = 0.05` = rmse_by_var(fc_bvar_005)
+)
+
+saveRDS(var_results, "results/var_results.rds")
+
+var_results |> knitr::kable(digits = 3)
+
+
+# 4.3c
+
+e_var4 <- actual[, "gdp"] - fc_var4[, 1]
+e_bvar <- actual[, "gdp"] - fc_bvar_03[, 1]
+
+forecast::dm.test(e_var4, e_bvar, h = 1, power = 2)
+
+e_infl_var4 <- actual[, "infl"] - fc_var4[, 5]
+e_infl_bvar <- actual[, "infl"] - fc_bvar_03[, 5]
+
+forecast::dm.test(e_infl_var4, e_infl_bvar, h = 1, power = 2)
+
 
 

@@ -347,9 +347,70 @@ saveRDS(fc_bvar_03, "results/fc_bvar_03.rds")
 ```
 
 
+### 4.3b
+
+```{r}
+set.seed(422)
+fc_bvar_005 <- bvar_cv(0.05)
+
+var_results <- tibble(
+  Variable = colnames(y),
+  `VAR(1)` = rmse_by_var(fc_var1),
+  `VAR(4)` = rmse_by_var(fc_var4),
+  `BVAR(4), lambda = 0.3` = rmse_by_var(fc_bvar_03),
+  `BVAR(4), lambda = 0.05` = rmse_by_var(fc_bvar_005)
+)
+
+saveRDS(var_results, "results/var_results.rds")
+
+var_results |> knitr::kable(digits = 3)
+```
+
+How does the BVAR(4) with \(\lambda = 0.3\) compare to the OLS VAR(4)? Both have the same variables and the same lags, so what explains any difference?
+
+How does it compare to the VAR(1)?
+
+What happens when \(\lambda = 0.05\)? What does this tell you about the amount of shrinkage? Suppose you used this table to choose your forecasting model. Would the winner’s RMSE here be a fair estimate of how accurately it will forecast in the future? Why or why not?
+
+**Response:** 
+BVAR(4) with a lambda of 0.3 performs a little better than OLS VAR(4) with a value of 0.539 compared to 0.569. Since OLS with VAR(4) has a lot of coefficients, there is greater room for estimation error. A lambda of 0.3 is is really modest shrinkage, so there isn't that much of an improvement in terms of estimation. 
+
+VAR(1) still outperforms on most variables. However, BVAR(4) with a lambda of 0.3 actually has a lower error results for some of the variables like gs10 and inv. This seems to indicate that simpler models perform better. 
+
+Lambda of 0.05 is extreme shrinkage which actually leads to higher MSE in a lot of cases. This means that the model is ignoring important signal form the data. The winners RMSE wouldn't be a fair estimate since we would need to see how it does on the actual testing data. After seeing how it performs, then we could see if the model actually holds up or if it was just over-fitting to the data. 
 
 
+### 4.3c 
 
+For GDP growth, test whether the VAR(4) and the BVAR(4) with \(\lambda = 0.3\) are equally accurate, using a Diebold–Mariano test with squared error loss. Then write the code to repeat the test for a second variable of your choice (i.e. not GDP growth). What do you conclude? How does this affect how you think about your results in 4.3b?
+
+
+```{r}
+e_var4 <- actual[, "gdp"] - fc_var4[, 1]
+e_bvar <- actual[, "gdp"] - fc_bvar_03[, 1]
+
+forecast::dm.test(e_var4, e_bvar, h = 1, power = 2)
+```
+
+
+The forecast matrices have the same column order as y, so column 1 is gdp. To test a different variable, change both the name and the column number in each line.
+
+I wanted to test on inflation (I am pretty sure its column 5): 
+
+```{r}
+e_infl_var4 <- actual[, "infl"] - fc_var4[, 5]
+e_infl_bvar <- actual[, "infl"] - fc_bvar_03[, 5]
+
+forecast::dm.test(e_infl_var4, e_infl_bvar, h = 1, power = 2)
+```
+
+**Response:** For GDP growth, I got a DM = 2.1366 and a p-value of 0.0346. At a 5% significance level, we would say there is something statistically significant about the difference and that the BVAR(4) with lambda = 0.3 is more accurate. 
+
+For inflation, I got a DM = 1.4529 with a p-value of 0.1489. At the 5% significance level, this fails to be statistically significant so the difference could be do to something else that doesn't involve the model. Despite the BVAR having lower RMSE for the variables, we can't reject equal accuracy. Maybe there is some kind of sampling noise or some other factor at play. Ultimately, I wouldn't trust the rankings from 4.3b. 
+
+# Part 5 – A Factor Model with FRED-MD
+
+ 
 
 
 
