@@ -57,7 +57,7 @@ In a few sentences: describe the trend and the seasonal pattern. Which months ar
 
 **Response:**
 
-The general trend is upwards. The lowest months are Jan/Feb and highest months are Nov/Dec. The seasonal swings do grow wiht the level of the series which means that logs can help us unmask actual behavior.
+The general trend is upwards. The lowest months are Jan/Feb and highest months are Nov/Dec. The seasonal swings do grow with the level of the series which means that logs can help us unmask actual behavior by turning the multiplicative behavior and making it additive.
 
 ## 2.2. Fit Both Models
 
